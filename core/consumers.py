@@ -147,6 +147,15 @@ class ChatConsumer(AsyncWebsocketConsumer):
             'username': username
         }))
 
+    async def user_left(self, event):
+        username = event['username']
+
+        # Notify WebSocket about the user leaving
+        await self.send(text_data=json.dumps({
+            'type': 'user_left',
+            'username': username
+        }))
+
     @database_sync_to_async
     def get_room(self, room_name):
         from .models import ChatRoom

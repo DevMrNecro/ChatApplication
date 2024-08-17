@@ -23,9 +23,13 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    #pkgs
     'rest_framework',
     'rest_framework_simplejwt',
     'channels',
+
+    #apss
     'core',
 ]
 
@@ -39,7 +43,8 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ASGI_APPLICATION = 'integrated_webapp.asgi.application'
+ASGI_APPLICATION = 'ChatProj.asgi.application'
+
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
