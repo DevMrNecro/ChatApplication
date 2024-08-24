@@ -56,7 +56,10 @@ def update_chat_history(sender, instance, **kwargs):
     for user in instance.room.users.all():
         try:
             chat_history = ChatHistory.objects.get(chat_room=instance.room, user_id=user.id)
-            history = json.loads(chat_history.history)
+            # Ensure history is a list, if not, initialize it
+            history = json.loads(chat_history.history) if chat_history.history else []
+            if not isinstance(history, list):
+                history = []
         except ChatHistory.DoesNotExist:
             history = []
         

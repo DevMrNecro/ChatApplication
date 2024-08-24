@@ -35,7 +35,8 @@ def chat_history(request, room_name, user_id):
         messages = Message.objects.filter(room__name=room_name).order_by('timestamp')
         history = [{
             'username': msg.user.username,  # Assuming `user` is a ForeignKey to Django's User model
-            'message': msg.content
+            'message': msg.content,
+            'timestamp': msg.timestamp
         } for msg in messages]
 
         return JsonResponse({'history': history}, status=200)

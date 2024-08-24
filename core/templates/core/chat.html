@@ -14,7 +14,7 @@
             min-height: 100vh;
             background-color: #f4f4f4;
         }
-
+        
         .chat-container {
             width: 400px;
             background: white;
@@ -24,8 +24,10 @@
             flex-direction: column;
             height: 80vh;
             max-height: 80vh;
+            overflow: hidden;
+            position: relative;
         }
-
+        
         .header {
             background-color: #2196f3;
             color: white;
@@ -35,7 +37,7 @@
             border-top-left-radius: 10px;
             border-top-right-radius: 10px;
         }
-
+        
         #chat-log {
             padding: 20px;
             flex: 1;
@@ -43,12 +45,14 @@
             border-bottom: 1px solid #ddd;
             display: flex;
             flex-direction: column;
+            position: relative;
+            z-index: 1;
         }
-
+        
         .message {
             margin-bottom: 10px;
         }
-
+        
         .send p, .receive p {
             margin: 0;
             padding: 10px;
@@ -56,47 +60,103 @@
             max-width: 80%;
             word-wrap: break-word;
         }
-
+        
         .send {
             text-align: right;
         }
-
+        
         .send p {
             background-color: #e1ffc7;
             display: inline-block;
         }
-
+        
         .receive {
             text-align: left;
         }
-
+        
         .receive p {
             background-color: #d3d3d3;
             display: inline-block;
         }
-
+        
+        .notification p {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+            text-align: center;
+            color: #555;
+        }
+        
+        .error {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #ffdddd;
+            padding: 20px;
+            border-radius: 5px;
+            text-align: center;
+            color: #d8000c;
+            z-index: 2; /* Ensures the error message is above other elements */
+            width: 80%; /* Adjust width as needed */
+        }
+        
         .input-container {
             display: flex;
             border-top: 1px solid #ddd;
             padding: 10px;
             background: white;
+            position: relative;
+            z-index: 1;
         }
-
+        
         #chat-message-input {
             flex: 1;
             margin-right: 10px;
         }
-
+        
         #chat-message-submit {
             background-color: #28a745;
             border: none;
             color: white;
             cursor: pointer;
         }
-
+        
         #chat-message-submit:hover {
             background-color: #218838;
         }
+        
+        /* Error state: blur messages and disable inputs */
+        .error-active #chat-log {
+            filter: blur(5px); /* Increased blur effect */
+        }
+        
+        .error-active .input-container {
+            filter: blur(3px); /* Blur the input box and send button */
+        }
+        
+        .error-active #chat-message-input,
+        .error-active #chat-message-submit {
+            pointer-events: none; /* Disable interactions */
+            opacity: 0.5; /* Optional: visually indicate disabled state */
+        }
+        
+        /* Normal state */
+        .error-inactive #chat-log {
+            filter: none;
+        }
+        
+        .error-inactive .input-container {
+            filter: none;
+        }
+        
+        .error-inactive #chat-message-input,
+        .error-inactive #chat-message-submit {
+            pointer-events: auto; /* Enable interactions */
+            opacity: 1; /* Restore opacity */
+        }
+        
     </style>
 </head>
 <body>
@@ -104,8 +164,8 @@
         <div class="header">Group: {{ room_name }}</div>
         <div id="chat-log"></div>
         <div class="input-container">
-            <input id="chat-message-input" type="text" class="input-field" placeholder="Type your message...">
-            <button id="chat-message-submit" class="btn">Send</button>
+            <input id="chat-message-input" type="text" class="input-field" placeholder="Type your message..." disabled>
+            <button id="chat-message-submit" class="btn" disabled>Send</button>
         </div>
     </div>
 
@@ -114,37 +174,97 @@
             var chatContainer = document.getElementById("chat-log");
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
-
+    
+        function formatTimestamp(timestamp) {
+            const date = new Date(timestamp);
+            if (isNaN(date.getTime())) {
+                return 'Invalid Date';
+            }
+        
+            let hours = date.getHours();
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            
+            // Convert hours from 24-hour to 12-hour format
+            hours = hours % 12;
+            hours = hours ? hours : 12; // Hour '0' should be '12'
+            
+            return `${hours}:${minutes} ${ampm}`;
+        }
+    
         const roomName = "{{ room_name }}";
         const userId = "{{ user_id }}";
         const websocketProtocol = window.location.protocol === "https:" ? "wss" : "ws";
         const wsEndpoint = `${websocketProtocol}://${window.location.host}/ws/chat/${encodeURIComponent(roomName)}/${encodeURIComponent(userId)}/`;
         const socket = new WebSocket(wsEndpoint);
-
+    
+        const chatContainer = document.querySelector('.chat-container');
+    
         socket.addEventListener("open", () => {
             console.log("WebSocket connection opened!");
+            document.getElementById('chat-message-input').disabled = false;
+            document.getElementById('chat-message-submit').disabled = false;
         });
-
+    
         socket.addEventListener("close", () => {
             console.log("WebSocket connection closed!");
         });
-
+    
+        socket.addEventListener("error", (event) => {
+            console.error("WebSocket error observed:", event);
+        });
+    
         socket.addEventListener("message", (event) => {
             const data = JSON.parse(event.data);
-            console.log(data); // Log the received data
-
+            console.log(data);
+    
             const chatLog = document.getElementById('chat-log');
-            const sender = data.username;
-            const message = data.message;
-
-            const messageDiv = document.createElement('div');
-            messageDiv.className = sender === '{{ user_id }}' ? 'send message' : 'receive message';
-            messageDiv.innerHTML = `<p>${message} <strong>${sender !== '{{ user_id }}' ? `- ${sender}` : ''}</strong></p>`;
-            chatLog.appendChild(messageDiv);
-
+            const timestamp = data.timestamp ? formatTimestamp(data.timestamp) : '';
+    
+            if (data.type === 'error') {
+                // Clear previous error messages
+                const existingError = document.querySelector('.error');
+                if (existingError) {
+                    existingError.remove();
+                }
+        
+                // Create and show the error message
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error';
+                errorDiv.innerHTML = `<p><strong>${data.message}</strong></p>`;
+                chatContainer.appendChild(errorDiv);
+                chatContainer.classList.add('error-active');
+                chatContainer.classList.remove('error-inactive');
+                scrollToBottom();
+                return;
+            } else {
+                chatContainer.classList.remove('error-active');
+                chatContainer.classList.add('error-inactive');
+            }
+    
+            const sender = data.username ? data.username : 'Anonymous';
+            const message = data.message || '';
+    
+            if (data.type === 'chat_message') {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = sender === userId ? 'send message' : 'receive message';
+                messageDiv.innerHTML = `<p>${message} <strong>${sender !== userId ? `- ${sender}` : ''}</strong> <span style="font-size: 0.8em; color: gray;">${timestamp}</span></p>`;
+                chatLog.appendChild(messageDiv);
+            } else if (data.type === 'user_joined') {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'notification';
+                messageDiv.innerHTML = `<p><strong>${data.username} joined the room.</strong></p>`;
+                chatLog.appendChild(messageDiv);
+            } else if (data.type === 'user_left') {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'notification';
+                messageDiv.innerHTML = `<p><strong>${data.username} left the room.</strong></p>`;
+                chatLog.appendChild(messageDiv);
+            }
+    
             scrollToBottom();
         });
-
+    
         document.getElementById('chat-message-submit').addEventListener('click', () => {
             const messageInputDom = document.getElementById('chat-message-input');
             const message = messageInputDom.value;
@@ -152,18 +272,19 @@
                 socket.send(JSON.stringify({
                     'message': message,
                     'room_name': roomName,
-                    'sender': userId
+                    'sender': userId,
+                    'timestamp': new Date().toISOString() // Send the current timestamp
                 }));
                 messageInputDom.value = '';
             }
         });
-
+    
         document.getElementById('chat-message-input').addEventListener('keyup', (e) => {
             if (e.key === 'Enter') {
                 document.getElementById('chat-message-submit').click();
             }
         });
-
+    
         function loadInitialChatHistory() {
             fetch(`/api/chat_history/${encodeURIComponent(roomName)}/${userId}/`)
                 .then(response => response.json())
@@ -172,19 +293,22 @@
                     chatLog.innerHTML = ''; // Clear existing history before loading new
                     data.history.forEach(msg => {
                         const messageDiv = document.createElement('div');
-                        messageDiv.className = msg.sender === userId ? 'send message' : 'receive message';
-                        messageDiv.innerHTML = `<p>${msg.message} <strong>${msg.sender !== userId ? `- ${msg.sender}` : ''}</strong></p>`;
+                        messageDiv.className = msg.user_id === userId ? 'send message' : 'receive message';
+                        const sender = msg.username ? msg.username : 'Anonymous';
+                        const timestamp = formatTimestamp(msg.timestamp);
+                        messageDiv.innerHTML = `<p>${msg.message} <strong>${msg.user_id !== userId ? `- ${sender}` : ''}</strong> <span style="font-size: 0.8em; color: gray;">${timestamp}</span></p>`;
                         chatLog.appendChild(messageDiv);
                     });
                     scrollToBottom();
                 })
                 .catch(error => console.error('Error loading chat history:', error));
         }
-
+    
         // Load initial chat history first, then establish WebSocket connection
         loadInitialChatHistory();
     </script>
-
+    
+    
     <!-- Materialize JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
 </body>
