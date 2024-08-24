@@ -1,0 +1,20 @@
+# Django settings
+SECRET_KEY=django-insecure-2(@29sv3y8g!*@=78c%4l75e5svl#f1z^nlz%$2jt#%1iv4av
+DEBUG=True
+
+# Allowed Hosts
+ALLOWED_HOSTS=127.0.0.1,localhost,production-domain.com
+
+# Database settings (commented out as PostgreSQL is not used)
+# DATABASE_URL=postgres://myuser:mypassword@db:5432/mydatabase
+# POSTGRES_DB=mydatabase
+# POSTGRES_USER=myuser
+# POSTGRES_PASSWORD=mypassword
+
+# Celery settings (commented out as Celery is not used)
+# CELERY_BROKER_URL=redis://redis:6379/0
+# CELERY_RESULT_BACKEND=redis://redis:6379/0
+
+# Channel Layers settings for Redis
+CHANNEL_LAYERS_HOST=redis
+CHANNEL_LAYERS_PORT=6379

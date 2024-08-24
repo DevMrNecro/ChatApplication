@@ -45,14 +45,18 @@ MIDDLEWARE = [
 
 ASGI_APPLICATION = 'ChatProj.asgi.application'
 
+# settings.py
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            "hosts": [(os.getenv('CHANNEL_LAYERS_HOST', '127.0.0.1'), int(os.getenv('CHANNEL_LAYERS_PORT', 6379)))],
+            "hosts": [
+                (os.getenv('CHANNEL_LAYERS_HOST', 'redis'), int(os.getenv('CHANNEL_LAYERS_PORT', 6379)))
+            ],
         },
     },
 }
+
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
